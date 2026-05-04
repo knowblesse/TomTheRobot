@@ -1,0 +1,15 @@
+# Computer vision
+opencv-python>=4.8
+
+# Numerics
+numpy>=1.24
+
+# Kalman filter (used in tracker.py later)
+filterpy>=1.4.5
+
+# Robot communication
+spherov2>=0.12
+bleak>=0.21         # transitive dep of spherov2; pinning to a known-good range
+
+# Arduino digital I/O over USB serial
+pyserial>=3.5
