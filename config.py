@@ -45,7 +45,7 @@ MORPH_CLOSE_KERNEL = 15        # fill holes in marker
 #                       Tracking                              #
 ###############################################################
 KALMAN_PROCESS_NOISE_RAT = 500.0    # high — rats are erratic; trust measurements
-KALMAN_PROCESS_NOISE_ROBOT = 250.0   # moderate — robot moves predictably under our cmd
+KALMAN_PROCESS_NOISE_ROBOT = 30.0   # moderate — robot moves predictably under our cmd
 KALMAN_MEASUREMENT_NOISE = 3.0      # pixels (lower = trust measurements more)
 
 MAX_FRAMES_LOST = 10                # ~0.5s at 20fps before declaring "lost"
@@ -81,6 +81,7 @@ LOG_DIR = "./sessions"
 SAVE_VIDEO_DEFAULT = False
 DISPLAY_DEFAULT = True
 CSV_FLUSH_EVERY_N = 30              # flush to disk this often (~1s at 30fps)
+SNAPSHOT_EVERY_S = 10.0     # SESSION: save a snapshot frame every N seconds
 
 ###############################################################
 #                       Keys (in main GUI)                    #

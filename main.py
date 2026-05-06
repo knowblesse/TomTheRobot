@@ -58,6 +58,7 @@ from detection import (
     detect_red_marker,
     polygon_to_mask,
 )
+from session import SessionManager
 from tracker import TrackerConfig, TwoObjectTracker
 from world_state import Command, WorldState
 
@@ -125,6 +126,7 @@ def processing_loop(
     tracker: TwoObjectTracker,
     controller: ChaseController,
     last_stop_reason_box: list,
+    session: SessionManager,
 ):
     """Run detection + tracker + controller for every fresh frame."""
     last_idx = -1
@@ -185,6 +187,11 @@ def processing_loop(
                 pass  # drop — heartbeat will resend
         if stop_reason is not None:
             last_stop_reason_box[0] = (stop_reason, now)
+
+        # Session logging (no-op when state is idle).
+        # Take a fresh snapshot for the logger to avoid a partial view.
+        snap_for_log = state.snapshot()
+        session.log_frame(snap_for_log, frame.image, now)
 
 
 # -----------------------------------------------------------------
@@ -325,6 +332,7 @@ def render(
     grabber_fps: float,
     red_params_box: list,
     rat_params_box: list,
+    session: SessionManager,
 ) -> np.ndarray:
     """Compose the display image with overlays."""
     disp = frame_bgr.copy()
@@ -395,6 +403,19 @@ def render(
         mode_text = "MODE: IDLE"
     draw_text(disp, mode_text, (10, y), color=mode_color); y += 22
 
+    # Session line
+    sst = session.state
+    if sst == "running":
+        s_color = COLOR_GREEN
+        s_text = f"SESSION: RUNNING  {session.session_id}  rows={session.row_count}"
+    elif sst == "paused":
+        s_color = (0, 165, 255)  # orange
+        s_text = f"SESSION: PAUSED   {session.session_id}  rows={session.row_count}"
+    else:
+        s_color = (180, 180, 180)
+        s_text = "SESSION: idle  (press 1 to start)"
+    draw_text(disp, s_text, (10, y), color=s_color); y += 22
+
     rat_p = rat_params_box[0]
     red_p = red_params_box[0]
 
@@ -441,6 +462,7 @@ def render(
     help_lines = [
         "calibrate:  m=polygon  c=red  r=rat  h=reset_aim  w=save",
         "control:    t=toggle_chase   space=robot_disable/enable   q/ESC=quit",
+        "session:    1=start  2=pause  3=halt",
         "red tune:   [/] range    ,/. min_area    n/N max_area",
         "rat tune:   ;/' V_thr    </> min_area    b/B max_area",
         "general:    s=screenshot",
@@ -620,6 +642,11 @@ def main() -> int:
     )
     tracker = TwoObjectTracker(tracker_cfg)
     controller = ChaseController(imu_offset_deg=config.INITIAL_IMU_OFFSET_DEG)
+    session = SessionManager(
+        root_dir=config.LOG_DIR,
+        snapshot_every_s=config.SNAPSHOT_EVERY_S,
+        csv_flush_every_n=config.CSV_FLUSH_EVERY_N,
+    )
 
     # 5. Shared state + threads
     state = WorldState()
@@ -651,6 +678,7 @@ def main() -> int:
             state.running = False
         ctrl_thread.join(timeout=2.0)
         grabber.stop()
+        arduino.close()
         return 1
 
     direction_label = _direction_label(config.INITIAL_IMU_OFFSET_DEG)
@@ -663,7 +691,8 @@ def main() -> int:
     proc_thread = threading.Thread(
         target=processing_loop,
         args=(grabber, state, cmd_queue, red_params_box, rat_params_box,
-              global_mask_box, tracker, controller, last_stop_reason_box),
+              global_mask_box, tracker, controller, last_stop_reason_box,
+              session),
         daemon=True, name="processing",
     )
     proc_thread.start()
@@ -685,7 +714,8 @@ def main() -> int:
             disp = render(frame.image, state, polygon, global_mask_box[0],
                           controller, last_stop_reason_box,
                           grabber.measured_fps(),
-                          red_params_box, rat_params_box)
+                          red_params_box, rat_params_box,
+                          session)
             cv.imshow(win, disp)
             key = cv.waitKey(1) & 0xFF
 
@@ -827,6 +857,25 @@ def main() -> int:
                 cv.imwrite(fname, disp)
                 print(f"[main] saved {fname}")
 
+            # ---- Session control ----
+            elif key == ord('1'):
+                msg = session.start()
+                print(f"[session] {msg}")
+            elif key == ord('2'):
+                # Pause: also force-stop chase per spec, but keep logging
+                # going (with session_state='paused' in CSV).
+                msg = session.pause()
+                print(f"[session] {msg}")
+                if session.state == "paused" and controller.mode == "chasing":
+                    controller.force_stop()
+                    try:
+                        cmd_queue.put_nowait(Command(speed=0, heading=0, stop=True))
+                    except queue.Full:
+                        pass
+            elif key == ord('3'):
+                msg = session.halt()
+                print(f"[session] {msg}")
+
     finally:
         with state.lock:
             state.running = False
@@ -838,6 +887,9 @@ def main() -> int:
         ctrl_thread.join(timeout=3.0)
         if 'proc_thread' in locals():
             proc_thread.join(timeout=1.0)
+        # Close session AFTER processing thread is done so no stray
+        # log_frame call hits a closed CSV file.
+        session.shutdown()
         grabber.stop()
         arduino.close()
 
