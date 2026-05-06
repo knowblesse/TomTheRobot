@@ -7,7 +7,7 @@ Edit values here; do not put magic numbers in other modules.
 ###############################################################
 #                       Hardware                              #
 ###############################################################
-CAMERA_INDEX = 1               # USB webcam (index 0 is the built-in laptop cam)
+CAMERA_INDEX = 0               # USB webcam (index 0 is the built-in laptop cam)
 CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 CAMERA_FPS = 30                # request from camera; actual may differ
@@ -16,7 +16,7 @@ CAMERA_FOURCC = 'MJPG'         # USB 2.0 bandwidth; needed for 30fps at 640x480
 # Arduino digital I/O over USB serial.
 # Set to a specific COM port (e.g. "COM4") to override; None = auto-detect.
 # Auto-detect scans available ports and looks for one that responds to PING.
-ARDUINO_PORT: str | None = None
+ARDUINO_PORT: str | None = "COM4"
 ARDUINO_BAUD = 115200
 ARDUINO_PING_TIMEOUT_S = 1.5    # max time to wait for PONG during handshake
 ARDUINO_BOOT_WAIT_S = 2.0       # Arduino auto-resets when port opens; wait for boot
@@ -34,7 +34,7 @@ USE_LAB_FOR_RED = True         # True: threshold in LAB (lighting-robust); False
 
 # Long-Evans rat hood (tuned: hood measures ~220 px area)
 RAT_DARKNESS_THRESHOLD_DEFAULT = 36   # V channel cutoff
-RAT_MIN_AREA_PX = 120
+RAT_MIN_AREA_PX = 70
 RAT_MAX_AREA_PX = 470
 
 # Morphology
@@ -45,7 +45,7 @@ MORPH_CLOSE_KERNEL = 15        # fill holes in marker
 #                       Tracking                              #
 ###############################################################
 KALMAN_PROCESS_NOISE_RAT = 500.0    # high — rats are erratic; trust measurements
-KALMAN_PROCESS_NOISE_ROBOT = 30.0   # moderate — robot moves predictably under our cmd
+KALMAN_PROCESS_NOISE_ROBOT = 250.0   # moderate — robot moves predictably under our cmd
 KALMAN_MEASUREMENT_NOISE = 3.0      # pixels (lower = trust measurements more)
 
 MAX_FRAMES_LOST = 10                # ~0.5s at 20fps before declaring "lost"

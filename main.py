@@ -728,7 +728,7 @@ def main() -> int:
                 sr = controller.toggle_chase()
                 if sr is None:
                     # Just entered CHASING. Fire chase-start pulse.
-                    arduino.pulse(config.ARDUINO_PIN_CHASE_START)
+                    arduino.toggle()
                 else:
                     last_stop_reason_box[0] = (sr, time.monotonic())
                     # Force a stop command into the queue so the robot
