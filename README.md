@@ -36,6 +36,7 @@ python -c "import cv2; [print(i, cv2.VideoCapture(i, cv2.CAP_DSHOW).isOpened()) 
 - Update `ARDUINO_PORT = "COM4"` in `config.py` to match your COM number. (Set it to `None` to auto-detect at startup instead.)
 
 ### 5. Upload the Arduino sketch
+See [docs/ARDUINO_SETUP.md](docs/ARDUINO_SETUP.md) for step-by-step instructions with screenshots.
 - Install the [Arduino IDE](https://www.arduino.cc/en/software) if you don't already have it.
 - Open `arduino/rattracker_io.ino` in the Arduino IDE.
 - Select your board: **Tools → Board → Arduino Uno** (or whichever you have).
